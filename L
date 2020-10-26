@@ -1,0 +1,58 @@
+//神经元PID
+float k = 8.0;           //神经元输出比例，首先调节项，全局的重要的 kcoef
+float p = 5.0;           //比例学习速度，可调节项，越大超调量越小，响应越慢
+float i = 40.0;          //积分学习速度，可调节项，越大响应越快，超调量越大
+float d = 3.0;           //微分学习速度，越大上升和下降响应越慢
+int16_t ek0 = 0;         //本次误差
+int16_t lasterror = 0;   //前一拍偏差
+int16_t preerror = 0;    //前两拍偏差
+const int8_t deadband = 0;    //死区
+int16_t pid_out = 0;           //输出值
+const int16_t maximum = 2047;  //输出值的上限，因为使用的是自定义pwm，所以不是255，而是2047
+const int16_t minimum = 0;    //输出值的下限，pwm最小值0
+double wp = 1000.0;      //比例加权系数，由神经元自动计算
+double wi = 1000.0;      //积分加权系数，由神经元自动计算
+double wd = 1000.0;      //微分加权系数，由神经元自动计算
+void NeuralPID() //神经元计算
+{
+  double x[3];
+  double w[3];
+  double sabs;
+  int16_t deltaResult; //临时
+
+  if (abs(ek0) > deadband) //死区
+  {
+    x[0] = ek0;
+    x[1] = ek0 - lasterror;
+    x[2] = ek0 - lasterror * 2 + preerror;
+    sabs = fabs(wi) + fabs(wp) + fabs(wd);
+    w[0] = wi / sabs;
+    w[1] = wp / sabs;
+    w[2] = wd / sabs;
+    deltaResult = (w[0] * x[0] + w[1] * x[1] + w[2] * x[2]) * k;
+  }
+  else
+  {
+    deltaResult = 0;
+  }
+  pid_out = pid_out + deltaResult;
+  if (pid_out > maximum)
+  {
+    pid_out = maximum;
+  }
+  else if (pid_out < minimum)
+  {
+    pid_out = minimum;
+  }
+
+  NeureLearningRules(ek0, pid_out, x);//单神经元学习
+
+  preerror = lasterror;
+  lasterror = ek0;
+}
+void NeureLearningRules(double zk, double uk, double * xi) //单神经元有监督Hebb学习规则
+{
+  wi = wi + i * zk * uk * xi[0];
+  wp = wp + p * zk * uk * xi[1];
+  wd = wd + d * zk * uk * xi[2];
+}

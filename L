@@ -92,6 +92,55 @@ void t12_pid()
 
 
 
+void read_t12_temp() //定时读取T12的温度
+{
+  if (millis() - t12_temp_time > t12_temp_read_time)
+  {
+    ec_read(); //关闭前读取电流
+    digitalWrite(t12_pwm_pin, 0);
+    //int time0 = millis();
+    //总显示函数相当于大约延时110ms,
+    //因为pcb设计有误，需要延时一段时间才能读取正确的T12温度，利用显示函数代替延时
+    t12_display(); //总显示函数
+    //delay(10);
+    //int time1 = millis();
+    //Serial.println(time1 - time0);
+    float t12_ad_nwe = 0.0; //临时AD
+    t12_ad_nwe = denoiseAnalog(t12_temp_pin); //读取即时AD
+    //t12_ad_nwe = analogRead(t12_temp_pin); //读取即时AD
+    t12_ad += (t12_ad_nwe - t12_ad) * 0.6;  //平滑滤波
+    //计算温度，自己测量自己拟合的曲线，没有测量设备请不要改动这里
+    //y = 0.00000010 x3 - 0.00031185 x2 + 0.64940017 x + 15.94505800 2020-09-22
+    t12_temp = 0.0000001 * t12_ad * t12_ad * t12_ad - 0.00031185 * t12_ad * t12_ad + 0.64940017 * t12_ad + 15.945058; //计算
+    t12_temp += (tc1047_temp - 33);  //环境温度补偿，因为测量的时候机温为33度，所以减33
+
+    t12_temp_average_cache += t12_temp;    //记录平均温度
+    t12_temp_average_count++;
+    if (t12_temp_average_count == 5)
+    {
+      t12_temp_average = float(t12_temp_average_cache / 5);
+      t12_temp_average_cache = 0;
+      t12_temp_average_count = 0;
+    }
+
+    handle_test();//手柄拔出检测
+
+    t12_pid(); //运行pid
+
+    t12_temp_time = millis();
+    //Serial.print(t12_temp);
+    //Serial.print(",");
+    //Serial.println(set_temp);
+  }
+}
+
+
+
+
+
+
+
+
 /*
   时钟输出 | Arduino输出Pin | 芯片Pin | Pin 名字
   OC0A       6                12       PD6
@@ -149,4 +198,3 @@ void pwm1(uint16_t val)//自定义PWM，使用相位和频率校正模式，2048
     OCR1B = val;   //用来设置比较器,占空比
   }
 }
-

@@ -1,0 +1,64 @@
+/***************************************************
+//Web: http://www.buydisplay.com
+EastRising Technology Co.,LTD
+Examples for ER-OLEDM0383-1
+Display is Hardward SPI 4-Wire SPI Interface 
+Tested and worked with:
+Works with Arduino 1.6.0 IDE  
+Test OK : Arduino DUE
+****************************************************/
+
+/*
+  == Hardware connection ==
+    OLED   =>    Arduino
+  *1. GND    ->    GND
+  *2. VCC    ->    3.3
+  *3. SCL    ->    SCK
+  *4. SDI    ->    MOSI
+  *5. RES    ->    8  
+  *6. DC     ->    9
+  *7. CS1    ->    10
+  *8. CS2    ->    7 
+  *9. FR1    ->    NC
+  *10.FR2    ->    NC  
+*/
+
+
+#include 
+#include "er_oled.h"
+
+//uint8_t oled_buf[OLED_Y_MAXPIXEL * OLED_X_MAXPIXEL/2];
+
+void setup() {
+  Serial.begin(9600);
+  Serial.print("OLED Example\n");
+
+  /* display an image of bitmap matrix */
+  er_oled_begin();
+
+  
+}
+
+void loop() {
+  OLED_Clear(0,0,320,132,0x00);
+ 
+  OLED_ShowPicture_mono(0,0,320,132,BMP_mono1);
+   delay(3000);
+   
+ /* 
+  OLED_ShowPicture_gray(0,0,320,132,BMP_gray1);
+  delay(3000);  
+
+
+  OLED_ShowPicture_gray(0,0,320,132,BMP_gray2);
+  delay(3000);
+
+ */  
+  OLED_ShowPicture_gray(0,0,320,132,BMP_gray3);
+  delay(15000);
+
+  OLED_ShowPicture_gray(0,0,320,132,BMP_gray4);
+  delay(3000);
+  
+
+}

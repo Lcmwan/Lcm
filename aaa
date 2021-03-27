@@ -1,0 +1,429 @@
+//----------------------------------------------------------------------
+//EASTRISING TECHNOLOGY CO,.LTD.//
+// Module    : ER-OLEDM0383-1  3.83"   320*132
+// Lanuage   : C51 Code
+// Create    : JAVEN
+// Date      : Apr-08-2020
+// Drive IC  : SSD1320*2
+// INTERFACE : 4 wire SPI
+// MCU 		 : STC12LE5A60S2
+// VDD		 : 3.3V     
+//----------------------------------------------------------------------
+
+#include "REG51.h"
+#include 
+
+#define  u8 unsigned char 
+#define  u16 unsigned int
+#define  u32 unsigned long int
+	
+#define OLED_CMD  0	//COMMAND
+#define OLED_DATA 1	//DATA
+
+sbit OLED_SCL=P1^0;//SCL
+sbit OLED_SDIN=P1^1;//SDA
+sbit OLED_RST =P3^4;//RES
+sbit OLED_DC =P3^3;//DC
+sbit OLED_CS1=P3^5; //CS1
+sbit OLED_CS2=P3^6; //CS2
+
+
+
+sbit KEY=P3^2; //STOP
+
+
+//-----------------OLED----------------
+
+#define OLED_SCLK_Clr() OLED_SCL=0
+#define OLED_SCLK_Set() OLED_SCL=1
+
+#define OLED_SDIN_Clr() OLED_SDIN=0
+#define OLED_SDIN_Set() OLED_SDIN=1;
+
+#define OLED_RST_Clr() OLED_RST=0
+#define OLED_RST_Set() OLED_RST=1
+
+#define OLED_DC_Clr() OLED_DC=0
+#define OLED_DC_Set() OLED_DC=1
+
+#define OLED_CS1_Clr()  OLED_CS1=0
+#define OLED_CS1_Set()  OLED_CS1=1
+
+#define OLED_CS2_Clr()  OLED_CS2=0
+#define OLED_CS2_Set()  OLED_CS2=1
+
+void delay_ms(unsigned int ms);
+void OLED_WR_Byte(u8 dat,u8 cmd);
+void OLED_WR_Byte1(u8 dat,u8 cmd,u8 mode);
+void OLED_Address_Set1(u16 x1,u16 x2,u16 y1,u16 y2,u8 t);
+void OLED_Clear(u16 x1,u16 y1,u16 x2,u16 y2,u8 color);
+void OLED_ShowChar(u16 x,u16 y,u8 chr,u8 sizey);
+void OLED_ShowString(u16 x,u16 y,u8 *dp,u8 sizey);
+u32 oled_pow(u8 m,u8 n);
+void OLED_ShowNum(u16 x,u16 y,u32 num,u8 len,u8 sizey);
+void OLED_ShowPicture_gray(u16 x,u16 y,u16 sizex,u16 sizey,const u8 bmp[]);
+void OLED_ShowPicture_mono(u16 x,u16 y,u16 sizex,u16 sizey,const u8 bmp[]);
+void OLED_Init(void);
+void Data_processing(u8  temp,u8  t);
+
+unsigned char code F8X16[][16];
+unsigned char code F16X32[][64];
+unsigned char code F24X48[][144];
+unsigned char code BMP_gray[];
+unsigned char code BMP_mono[];
+unsigned char code BMP1_mono[];
+
+
+int main(void)
+{	
+	u8 t=' ';
+	OLED_Init();
+	while(1) 
+	{
+	
+		OLED_ShowPicture_mono(0,0,320,132,BMP_mono);
+		delay_ms(2000);	
+		OLED_ShowPicture_mono(0,0,320,132,BMP1_mono);
+		delay_ms(2000);	
+			
+		OLED_ShowPicture_gray(0,0,320,132,BMP_gray);
+		delay_ms(2000);
+		OLED_Clear(0,0,320,132,0x00);
+		OLED_ShowString(10,0,"WWW.BUYDISPLAY.COM",32);
+		OLED_ShowString(48,40," OLED DISPLAY",32);
+		OLED_ShowString(48,80," 320*132 DOTS",32);;
+		OLED_ShowString(0,116,"0123456789ABCDEFGHIJKLMNOPQRSTabcdefghij",16);
+		delay_ms(2000);
+		OLED_Clear(0,0,320,132,0x00);
+
+	}	  
+	
+}
+
+
+
+
+void uDelay(unsigned int l)
+{
+	while(l--);
+}
+
+
+void delay_ms(unsigned int ms)
+{                         
+	unsigned int a;
+	while(ms)
+	{
+		a=1800;
+		while(a--);
+		ms--;
+
+		
+	}
+
+	while(!KEY);
+	uDelay(300);
+	while(!KEY);
+	return;
+}
+
+void OLED_WR_Byte(u8 dat,u8 cmd)
+{
+	u8 i;
+	if(cmd)
+	  OLED_DC_Set();
+	else 
+	  OLED_DC_Clr();
+	OLED_CS1_Clr();
+	OLED_CS2_Clr();
+	for(i=0;i<8;i++)
+	{
+		OLED_SCLK_Clr();
+		if(dat&0x80)
+		{
+		   OLED_SDIN_Set();
+		}
+		else 
+		{
+		   OLED_SDIN_Clr();
+		}
+		OLED_SCLK_Set();
+		dat<<=1;   
+	}				 		  
+	OLED_CS1_Set();
+	OLED_CS2_Set();
+	OLED_DC_Set();   	  
+}
+
+void OLED_WR_Byte1(u8 dat,u8 cmd,u8 mode)
+{
+	u8 i;
+	if(cmd)
+	  OLED_DC_Set();
+	else 
+	  OLED_DC_Clr();
+	if(mode==1)OLED_CS1_Clr();
+	if(mode==2)OLED_CS2_Clr();
+	for(i=0;i<8;i++)
+	{
+		OLED_SCLK_Clr();
+		if(dat&0x80)
+		{
+		   OLED_SDIN_Set();
+		}
+		else 
+		{
+		   OLED_SDIN_Clr();
+		}
+		OLED_SCLK_Set();
+		dat<<=1;   
+	}
+	if(mode==1)OLED_CS1_Set();
+	if(mode==2)OLED_CS2_Set();
+	OLED_DC_Set();
+}
+
+
+
+void OLED_Address_Set1(u16 x1,u16 x2,u16 y1,u16 y2,u8 t)
+{
+	if(x2<80)
+	{
+		OLED_WR_Byte1(0x21,OLED_CMD,t);
+		OLED_WR_Byte1(x1,OLED_CMD,t);
+		OLED_WR_Byte1(x2,OLED_CMD,t);
+		OLED_WR_Byte1(0x22,OLED_CMD,t);
+		OLED_WR_Byte1(y1,OLED_CMD,t);
+		OLED_WR_Byte1(y2,OLED_CMD,t);
+	}
+	else
+	{
+		OLED_WR_Byte1(0x21,OLED_CMD,1);
+		OLED_WR_Byte1(x1,OLED_CMD,1);
+		OLED_WR_Byte1(79,OLED_CMD,1);
+		OLED_WR_Byte1(0x22,OLED_CMD,1);
+		OLED_WR_Byte1(y1,OLED_CMD,1);
+		OLED_WR_Byte1(y2,OLED_CMD,1);
+		
+		OLED_WR_Byte1(0x21,OLED_CMD,2);
+		OLED_WR_Byte1(0,OLED_CMD,2);
+		OLED_WR_Byte1(x2-80,OLED_CMD,2);
+		OLED_WR_Byte1(0x22,OLED_CMD,2);
+		OLED_WR_Byte1(y1,OLED_CMD,2);
+		OLED_WR_Byte1(y2,OLED_CMD,2);
+	}
+}
+
+//CLEAN
+void OLED_Clear(u16 x1,u16 y1,u16 x2,u16 y2,u8 color)
+{
+	u8 j,t=0,sizex;
+	u16 i,xt=0;
+	x1/=2;
+	x2/=2;
+	sizex=x2-x1;
+	if(x1<80)t=1;
+	else
+  {
+		t=2;
+		x1-=80;
+	}
+	OLED_Address_Set1(x1,x2-1,y1,y2-1,t);
+	for(i=x1;i79)
+			{
+				xt++;
+				if(xt==sizex) xt=0;
+				if(xt+x1>79) t=2;
+				else t=1;
+			}
+	  }
+	}
+}
+
+
+void OLED_ShowChar(u16 x,u16 y,u8 chr,u8 sizey)
+{
+	u8 j,t=0,c,xt=0;
+	u8 i,temp,DATA1=0;
+	u16 num;
+	c=chr-' ';
+	x/=2;
+	if(x<80)t=1;
+	else 
+  {
+		t=2;
+		x-=80;
+	}
+	OLED_Address_Set1(x,x+sizey/4-1,y,y+sizey-1,t);
+	num=sizey/2*sizey/8;
+	for(i=0;i>=1;
+			if(temp&0x01)
+			{
+				DATA1|=0x0f;
+			}
+			temp>>=1;
+			OLED_WR_Byte1(DATA1,OLED_DATA,t);
+			DATA1=0;
+			if(x+sizey/4-1>79)
+			{
+				xt++;
+				if(xt==sizey/4) xt=0;
+				if(xt+x>79) t=2;
+				else t=1;
+			}
+		}
+	}
+}
+
+
+void OLED_ShowString(u16 x,u16 y,u8 *dp,u8 sizey)
+{
+	while(*dp!='\0')
+	{
+	  OLED_ShowChar(x,y,*dp,sizey);
+		dp++;
+		x+=sizey/2;
+	}
+}
+
+
+u32 oled_pow(u8 m,u8 n)
+{
+	u32 result=1;
+	while(n--)result*=m;    
+	return result;
+}
+
+
+
+void OLED_ShowNum(u16 x,u16 y,u32 num,u8 len,u8 sizey)
+{         	
+	u8 t,temp;
+	u8 enshow=0;
+	for(t=0;t>3;
+		temp3=(temp&0x20)<<2;
+		temp4=(temp&0x10)>>1;
+		temp5=(temp&0x08)<<4;
+		temp6=(temp&0x04)<<1;
+		temp7=(temp&0x02)<<6;
+		temp8=(temp&0x01)<<3;
+		h11=temp1|temp1>>1|temp1>>2|temp1>>3;
+		h12=temp2|temp2>>1|temp2>>2|temp2>>3;
+		h13=temp3|temp3>>1|temp3>>2|temp3>>3;
+		h14=temp4|temp4>>1|temp4>>2|temp4>>3;
+		h15=temp5|temp5>>1|temp5>>2|temp5>>3;
+		h16=temp6|temp6>>1|temp6>>2|temp6>>3;
+		h17=temp7|temp7>>1|temp7>>2|temp7>>3;
+		h18=temp8|temp8>>1|temp8>>2|temp8>>3;
+		d1=h11|h12;
+		d2=h13|h14;
+		d3=h15|h16;
+		d4=h17|h18;
+
+		OLED_WR_Byte1(d1,OLED_DATA,t);
+		OLED_WR_Byte1(d2,OLED_DATA,t);
+		OLED_WR_Byte1(d3,OLED_DATA,t);
+ 		OLED_WR_Byte1(d4,OLED_DATA,t);
+
+}
+
+
+
+
+void OLED_ShowPicture_mono(u16 x,u16 y,u16 sizex,u16 sizey,const u8 bmp[])
+{
+	u8 t=0;
+	u8 DATA1=0;
+	u16 i,num,xt=0;
+	x/=2;
+	if(x<80)t=1;
+	else
+  {
+		t=2;
+		x-=80;
+	}
+	OLED_Address_Set1(x,x+sizex/2-1,y,y+sizey-1,t);
+	num=sizex*sizey/8;
+	for(i=0;i79)
+		{
+			xt+=4;
+			if(xt==sizex/2) xt=0;
+			if(xt+x>79) t=2;
+			else t=1;
+		}
+	}
+}
+
+
+void OLED_ShowPicture_gray(u16 x,u16 y,u16 sizex,u16 sizey,const u8 bmp[])
+{
+	u8 t=0;
+	u8 DATA1=0;
+	u16 i,num,xt=0;
+	x/=2;
+	if(x<80)t=1;
+	else
+  {
+		t=2;
+		x-=80;
+	}
+	OLED_Address_Set1(x,x+sizex/2-1,y,y+sizey-1,t);
+	num=sizex*sizey/2;
+	for(i=0;i79)
+		{
+			xt++;
+			if(xt==sizex/2) xt=0;
+			if(xt+x>79) t=2;
+			else t=1;
+		}
+	}
+}
+
+
+
+void OLED_Init(void)
+{
+	OLED_RST_Clr();
+	delay_ms(200);
+	OLED_RST_Set();
+	
+	OLED_WR_Byte(0xae,OLED_CMD);//Display OFF 
+	OLED_WR_Byte(0xfd,OLED_CMD);//Set Command Lock 
+	OLED_WR_Byte(0x12,OLED_CMD); 
+	OLED_WR_Byte(0x20,OLED_CMD);//Set Memory Addressing Mode 
+	OLED_WR_Byte(0x00,OLED_CMD); 
+	OLED_WR_Byte(0x25,OLED_CMD);//Set Portrait Addressing Mode 
+	OLED_WR_Byte(0x00,OLED_CMD);//Normal Addressing Mode 
+	OLED_WR_Byte(0x81,OLED_CMD);//Set Contrast Control 
+	OLED_WR_Byte(0x6b,OLED_CMD); 
+	OLED_WR_Byte1(0xa0,OLED_CMD,1);//Set Seg Remap
+	OLED_WR_Byte1(0xa1,OLED_CMD,2);
+	OLED_WR_Byte(0xa2,OLED_CMD);//Set Display Start Line 
+	OLED_WR_Byte(0x00,OLED_CMD); 
+	OLED_WR_Byte(0xa4,OLED_CMD);//Resume to RAM content display 
+	OLED_WR_Byte(0xa6,OLED_CMD);//Set Normal Display 
+	OLED_WR_Byte(0xa8,OLED_CMD);//Set MUX Ratio 
+	OLED_WR_Byte(0x83,OLED_CMD);//1/132 duty 
+	OLED_WR_Byte(0xad,OLED_CMD);//Select external or internal IREF 
+	OLED_WR_Byte(0x10,OLED_CMD); 
+	OLED_WR_Byte(0xbc,OLED_CMD);//Set Pre-charge voltage 
+	OLED_WR_Byte(0x1e,OLED_CMD);// 
+	OLED_WR_Byte(0xbf,OLED_CMD);//Linear LUT 
+	OLED_WR_Byte1(0xc8,OLED_CMD,1);//Set COM Output Scan Direction 
+	OLED_WR_Byte1(0xc0,OLED_CMD,2);
+	OLED_WR_Byte(0xd3,OLED_CMD);//Set Display Offset 
+	OLED_WR_Byte1(0x0e,OLED_CMD,1); 
+	OLED_WR_Byte1(0x92,OLED_CMD,2); 
+	OLED_WR_Byte(0xd5,OLED_CMD);//Set Display Clock Divide Ratio/Oscillator Frequency 
+	OLED_WR_Byte(0xc2,OLED_CMD);//85Hz 
+	OLED_WR_Byte(0xd9,OLED_CMD);//Set Pre-charge Period 
+	OLED_WR_Byte(0x72,OLED_CMD);// 
+	OLED_WR_Byte(0xda,OLED_CMD);//Set SEG Pins Hardware Configuration 
+	OLED_WR_Byte(0x32,OLED_CMD);
+	OLED_WR_Byte(0xbd,OLED_CMD);//Set VP 
+	OLED_WR_Byte(0x03,OLED_CMD); 
+	OLED_WR_Byte(0xdb,OLED_CMD);//Set VCOMH 
+	OLED_WR_Byte(0x30,OLED_CMD);
+	OLED_Clear(0,0,320,132,0x00);
+	OLED_WR_Byte(0xaf,OLED_CMD);//Display on
+}
